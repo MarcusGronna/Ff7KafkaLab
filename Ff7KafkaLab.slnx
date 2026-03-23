@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Ff7.Consumer/Ff7.Consumer.csproj" />
+  <Project Path="Ff7.Contracts/Ff7.Contracts.csproj" />
+  <Project Path="Ff7.ProducerApi/Ff7.ProducerApi.csproj" />
+</Solution>

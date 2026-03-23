@@ -1,0 +1,6 @@
+@Ff7.ProducerApi_HostAddress = http://localhost:5231
+
+GET {{Ff7.ProducerApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
