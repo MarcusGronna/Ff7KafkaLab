@@ -41,8 +41,8 @@ try
         Console.WriteLine($"Offset: {result.Offset.Value}");
         Console.WriteLine($"Key (BattleId): {result.Message.Key}");
         Console.WriteLine(
-            $"{battleEvent.CharacterName} uses {battleEvent.Action} on {battleEvent.Target}" +
-            $"in battle {battleEvent.BattleId} at {battleEvent.OccurredAtUtc:0}");
+            $"{battleEvent.CharacterName} uses {battleEvent.Action} on {battleEvent.Target} " +
+            $"in battle {battleEvent.BattleId} at {battleEvent.OccurredAtUtc:O}");
 
         consumer.Commit(result);
     }
