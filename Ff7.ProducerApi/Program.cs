@@ -1,41 +1,74 @@
+using Confluent.Kafka;
+using Ff7.Contracts;
+using Scalar.AspNetCore;
+using System.Text.Json;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+builder.Services.AddSingleton<IProducer<string, string>>(_ =>
+{
+    var config = new ProducerConfig
+    {
+        BootstrapServers = "localhost:9092",
+        ClientId = "ff7-producer-api",
+        Acks = Acks.All,
+        EnableIdempotence = true
+    };
+
+    return new ProducerBuilder<string, string>(config).Build();
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
-app.UseHttpsRedirection();
-
-var summaries = new[]
+app.MapPost("/battle-events", async (
+    CreateBattleEventRequest request,
+    IProducer<string, string> producer) =>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    var battleEvent = new BattleEvent(
+        EventId: Guid.NewGuid(),
+        BattleId: request.BattleId,
+        CharacterName: request.CharacterName,
+        Action: request.Action,
+        Target: request.Target,
+        OccurredAtUtc: DateTime.UtcNow);
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
+    var json = JsonSerializer.Serialize(battleEvent);
+
+    var result = await producer.ProduceAsync(
+        "ff7.battle-events",
+        new Message<string, string>
+        {
+            Key = battleEvent.BattleId,
+            Value = json
+        });
+
+    return Results.Ok(new
+    {
+        message = "Battle event produced",
+        battleEvent.EventId,
+        battleEvent.BattleId,
+        result.Topic,
+        Partition = result.Partition.Value,
+        Offset = result.Offset.Value
+    });
 })
-.WithName("GetWeatherForecast");
+.WithName("CreateEvent")
+.WithSummary("Create an FF7 battle event and publishes it to Kafka.");
+
+app.MapGet("/health", () => "Healthy");
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+public record CreateBattleEventRequest(
+    string BattleId,
+    string CharacterName,
+    string Action,
+    string Target);
